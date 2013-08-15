@@ -14,15 +14,15 @@ classdef VirtualScope < lib.deviceDriverBase
 	end
 
 	methods
-		function VirtualScope(varargin)
+		function obj = VirtualScope(varargin)
 			% Usage: VirtualScope(scope1, scope2, ...)
 			% where each "scope" object is a object supporting a digitizer interface
 			for ct = 1:nargin
-				scopes{ct} = varargin{ct}
+				obj.scopes{ct} = varargin{ct};
 			end
 			% for now, assume number of channnels is twice the number of child scopes
-			obj.numChannels = 2*length(scopes);
-			obj.ready = zeros(length(scopes), 1);
+			obj.numChannels = 2*length(obj.scopes);
+			obj.ready = zeros(length(obj.scopes), 1);
 		end
 
 		% dummy stubs required by all instruments
@@ -45,6 +45,8 @@ classdef VirtualScope < lib.deviceDriverBase
 			bufferct = 0;
 			totNumBuffers = round(obj.scopes{1}.settings.averager.nbrRoundRobins/obj.scopes{1}.buffers.roundRobinsPerBuffer);
 			
+			sumDataA = cell(length(obj.scopes), 1);
+			sumDataB = cell(length(obj.scopes), 1);
 			for n = 1:length(obj.scopes)
 				if strcmp(obj.scopes{n}.acquireMode, 'averager')
 					sumDataA{n} = zeros([obj.scopes{n}.settings.averager.recordLength, obj.scopes{n}.settings.averager.nbrSegments]);
