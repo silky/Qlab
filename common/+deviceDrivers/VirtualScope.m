@@ -7,10 +7,6 @@ classdef VirtualScope < lib.deviceDriverBase
 		timeOut = 10 % in seconds
 		numChannels
 		scopes = {}
-		wfms = {}
-		ts = {}
-		listeners = {}
-		ready = [] % vector to store whether each individual scope has new data
 	end
 
 	events
@@ -37,26 +33,7 @@ classdef VirtualScope < lib.deviceDriverBase
 		end
 
 		function acquire(obj)
-			c = onCleanup(@() obj.cleanUp());
-			% listen to 'DataReady' signal from child scopes
-			for ct = 1:length(scopes)
-				obj.listeners{ct} = addlistener(obj.scopes{ct}, 'DataReady', @obj.process_data_ready);
-			end
-
-			obj.ready(:) = 0;
-
 			cellfun(@(scope) acquire(scope), obj.scopes);
-		end
-
-		function process_data_ready(obj, src, ~)
-			idx = find(src == obj.scopes, 1);
-			obj.ready(idx) = 1;
-			[obj.wfms{2*idx-1}, obj.ts{2*idx-1}] = src.transfer_waveform(1);
-			[obj.wfms{2*idx}, obj.ts{2*idx}] = src.transfer_waveform(2);
-			if all(obj.ready == 1)
-				notify('DataReady');
-				obj.ready(:) = 0;
-			end
 		end
 
 		function status = wait_for_acquisition(obj, timeOut)
@@ -65,7 +42,6 @@ classdef VirtualScope < lib.deviceDriverBase
 				timeOut = obj.timeOut;
 			end
 
-			% from IBM:
 			bufferct = 0;
 			totNumBuffers = round(obj.scopes{1}.settings.averager.nbrRoundRobins/obj.scopes{1}.buffers.roundRobinsPerBuffer);
 			
@@ -77,7 +53,6 @@ classdef VirtualScope < lib.deviceDriverBase
 			end
 			
 			while bufferct < totNumBuffers
-				
 				%Move to the next buffer
 				bufferNum = mod(bufferct, obj.scopes{1}.buffers.numBuffers) + 1;
 				for n = 1:length(obj.scopes)
@@ -88,13 +63,12 @@ classdef VirtualScope < lib.deviceDriverBase
 						sumDataA{n} = sumDataA{n} + obj.scopes{n}.data{1};
 						sumDataB{n} = sumDataB{n} + obj.scopes{n}.data{2};
 					end
-					notify(obj.scopes{n}, 'DataReady');
 					obj.scopes{n}.clear_buffer(bufferNum);
 					
 				end
-				%Increment the buffer ct and see if it was the last one
-				bufferct = bufferct+1;
-				
+				% we have data from each scope, so fire the DataReady event
+				notify(obj, 'DataReady');
+				bufferct = bufferct+1;				
 			end
 			for n = 1:length(obj.scopes)                
 				if strcmp( obj.scopes{n}.acquireMode, 'averager')
