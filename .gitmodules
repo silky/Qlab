@@ -1,3 +1,6 @@
 [submodule "common/util/matlab-json"]
 	path = common/util/matlab-json
 	url = git://github.com/kyamagu/matlab-json.git
+[submodule "extern/libaps"]
+	path = extern/libaps
+	url = git@github.com:BBN-Q/libaps.git
